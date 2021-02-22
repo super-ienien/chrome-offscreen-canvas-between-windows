@@ -3,7 +3,8 @@ function main () {
   const offscreen = canvasDst.transferControlToOffscreen();
 
   const sharedWorker = new SharedWorker("shared-worker.js", "a");
-  let peerId, port, canvas, framebuffer;
+
+  let peerId, port;
 
   sharedWorker.onerror = function(error) {
     console.error("error in shared worker", error);
@@ -11,34 +12,19 @@ function main () {
 
   sharedWorker.port.onmessage = function (e) {
     if (e.data.kind === "connect") {
-      peerId = e.data.peerId
-        sharedWorker.port.postMessage({kind: "viewer-ready", peerId});
+      // We are connected to the shared worker
+        peerId = e.data.peerId
+      // We send to the viewer a ready message
+      sharedWorker.port.postMessage({kind: "viewer-ready", peerId});
     } else if (e.data.kind === 'port') {
+      // We received the message channel port from the producer
       port = e.data.port;
-      port.onmessage = function (e) {
-        console.log('message', e.data);
-        if (e.data.kind === 'framebuffer') {
-          framebuffer = e.data.framebuffer;
-          debugger
-        } else if (e.data.kind === 'bitmap') {
-          console.log(Date.now() - e.data.ts, 'ms');
-          updateCanvas(e.data.bitmap);
-        }
-      }
+      // We send the offscreen canvas to the producer and tell him to start playing the video
       port.postMessage({kind: "canvas", canvas: offscreen}, [offscreen]);
       port.postMessage({kind: "start-video"});
     }
   };
 
-  function initCanvas(canvas) {
-
-  }
-
-  function updateCanvas(bitmap) {
-    ctxDst.transferFromImageBitmap(bitmap);
-  }
-
-console.log('yo');
   sharedWorker.port.start();
 }
 
